@@ -11,24 +11,26 @@ Availablility on Devices:
     
 Note: This script is a template and can be modified based on the desired results.
 """
+
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import torch.optim as optim
 from torchvision import transforms, datasets
 from torch.utils.data import DataLoader, random_split
 
 
 """
-Predefined transformation for the data.
+Predefine transformations for the data includes normalization and resizing.
 """
-transform = transforms.Compose([
-    transforms.RandomResizedCrop(224),
-    transforms.RandomHorizontalFlip(),
-    transforms.ToTensor(),
-    transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                         std=[0.229, 0.224, 0.225]),
-])
+transform = transforms.Compose(
+    [
+        transforms.RandomResizedCrop(224),
+        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+    ]
+)
+
 
 def get_dataloader(transform, root, batch_size, split_ratio=0.8, num_workers=2):
     """
@@ -44,18 +46,26 @@ def get_dataloader(transform, root, batch_size, split_ratio=0.8, num_workers=2):
     Returns:
         Tuple[DataLoader, DataLoader]: A tuple containing the training DataLoader and the testing DataLoader.
     """
-    
+
     dataset = datasets.ImageFolder(root=root, transform=transform)
     train_size = int(len(dataset) * split_ratio)
     valid_size = int(len(dataset) * 0.1)
     test_size = len(dataset) - train_size - valid_size
-    
-    trainset, validset, testset = random_split(dataset, [train_size, valid_size, test_size])
-    
-    trainloader = DataLoader(trainset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
-    validloader = DataLoader(validset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
-    testloader = DataLoader(testset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
-    
+
+    trainset, validset, testset = random_split(
+        dataset, [train_size, valid_size, test_size]
+    )
+
+    trainloader = DataLoader(
+        trainset, batch_size=batch_size, shuffle=True, num_workers=num_workers
+    )
+    validloader = DataLoader(
+        validset, batch_size=batch_size, shuffle=False, num_workers=num_workers
+    )
+    testloader = DataLoader(
+        testset, batch_size=batch_size, shuffle=False, num_workers=num_workers
+    )
+
     return trainloader, validloader, testloader
 
 
@@ -63,53 +73,62 @@ class ConvNet(nn.Module):
     """
     Convolutional Neural Network model for image classification on endangered species.
     4 convolutional layers and 3 fully connected layers.
-        - More layers to better caputure 
+        - More layers to better caputure
 
     Args:
         nn (_type_): _description_
-    """    
+    """
+
     def __init__(self):
         super().__init__()
-        self.conv_layers = nn.Sequential(
+        self.convolutional_layers = nn.Sequential(
             nn.Conv2d(3, 32, kernel_size=3, padding=1),
             nn.BatchNorm2d(32),
             nn.ReLU(inplace=True),
             nn.MaxPool2d(2, 2),
-
+            
             nn.Conv2d(32, 64, kernel_size=3, padding=1),
             nn.BatchNorm2d(64),
             nn.ReLU(inplace=True),
             nn.MaxPool2d(2, 2),
-
+            
             nn.Conv2d(64, 128, kernel_size=3, padding=1),
             nn.BatchNorm2d(128),
             nn.ReLU(inplace=True),
             nn.MaxPool2d(2, 2),
-
+            
             nn.Conv2d(128, 256, kernel_size=3, padding=1),
             nn.BatchNorm2d(256),
             nn.ReLU(inplace=True),
             nn.MaxPool2d(2, 2),
         )
 
-        self.fc_layers = nn.Sequential(
-            nn.Dropout(0.5),
+        self.fully_connection_layers = nn.Sequential(
+            nn.Dropout(0.2),
             nn.Linear(256 * 14 * 14, 512),
             nn.ReLU(inplace=True),
-            nn.Dropout(0.5),
+            
+            nn.Dropout(0.2),
             nn.Linear(512, 256),
             nn.ReLU(inplace=True),
-            nn.Linear(256, 11)
+            
+            nn.Dropout(0.2),
+            nn.Linear(256, 64),
+            nn.ReLU(inplace=True),
+            
+            nn.Linear(64, 11),
         )
-    
+
     def forward(self, x):
-        x = self.conv_layers(x)
+        x = self.convolutional_layers(x)
         x = x.view(x.size(0), -1)
-        x = self.fc_layers(x)
+        x = self.fully_connection_layers(x)
         return x
 
 
-def training_loop(model, trainloader, validloader, num_epochs=20, learning_rate=0.001, device="cpu"):
+def training_loop(
+    model, trainloader, validloader, num_epochs=20, learning_rate=0.001, device="cpu"
+):
     """
     Training loop for training the neural network.
     Changes can be made to the loss function, optimizer, model, and device.
@@ -120,14 +139,14 @@ def training_loop(model, trainloader, validloader, num_epochs=20, learning_rate=
         num_epochs (int, optional): The number of training cyles to do. Defaults to 20.
         learning_rate (_type_, optional):The rate at which we can perform gradient descent. Defaults to 1e-2.
         device (str, optional): Device to use for training (preferably gpu if possible). Defaults to "cpu".
-    """    
-    
-    '''
+    """
+
+    """
     Change the loss function and optimizer based on our findings.
-    '''
+    """
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-    
+
     for epoch in range(num_epochs):
         model.train()
         running_loss = 0.0
@@ -135,20 +154,20 @@ def training_loop(model, trainloader, validloader, num_epochs=20, learning_rate=
             inputs, labels = data
             inputs = inputs.to(device)
             labels = labels.to(device)
-            
+
             optimizer.zero_grad()
             outputs = model(inputs)
             loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
-            
+
             running_loss += loss.item()
-            
+
         avg_train_loss = running_loss / len(trainloader)
-        print(f'Epoch [{epoch+1}/{num_epochs}], Training Loss: {avg_train_loss:.3f}')
-        
+        print(f"Epoch [{epoch+1}/{num_epochs}], Training Loss: {avg_train_loss:.3f}")
 
         validate(model, validloader, criterion, device)
+
 
 def validate(model, dataloader, criterion, device):
     """
@@ -159,7 +178,7 @@ def validate(model, dataloader, criterion, device):
         dataloader (_type_): validation data we are using
         criterion (_type_): loss function we are using to evaluate the model
         device (_type_): device we are using for training (mps, cuda, cpu)
-    """    
+    """
     model.eval()
     running_loss = 0.0
     correct = 0
@@ -177,18 +196,19 @@ def validate(model, dataloader, criterion, device):
             correct += (predicted == labels).sum().item()
     accuracy = 100 * correct / total
     avg_loss = running_loss / len(dataloader)
-    print(f'Validation Loss: {avg_loss:.3f}, Accuracy: {accuracy:.2f}%')
+    print(f"Validation Loss: {avg_loss:.3f}, Accuracy: {accuracy:.2f}%")
     model.train()
 
+
 def main():
-    
+
     device = (
-        torch.device("mps") if torch.backends.mps.is_available() else 
-        torch.device("cuda") if torch.cuda.is_available() else 
-        torch.device("cpu")
+        torch.device("mps")
+        if torch.backends.mps.is_available()
+        else torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
     )
     print("Device: ", device)
-    
+
     """
     Changable parameters for the model.
     Change based on desired results.
@@ -196,34 +216,37 @@ def main():
     root = "./dataset/Danger Of Extinction"
     batch_size = 32
     num_workers = 4
-    num_epochs = 50
+    num_epochs = 15
     split_ratio = 0.8
     learning_rate = 0.001
-    
+
     print("Getting dataloader...")
     train_loader, valid_loader, test_loader = get_dataloader(
-        transform=transform, root=root, batch_size=batch_size, split_ratio=split_ratio, num_workers=num_workers
+        transform=transform,
+        root=root,
+        batch_size=batch_size,
+        split_ratio=split_ratio,
+        num_workers=num_workers,
     )
-    
+
     model = ConvNet().to(device)
-    
+
     print("Starting training loop...")
     training_loop(
-        model=model, 
-        trainloader=train_loader, 
+        model=model,
+        trainloader=train_loader,
         validloader=valid_loader,
-        num_epochs=num_epochs, 
-        learning_rate=learning_rate, 
-        device=device
+        num_epochs=num_epochs,
+        learning_rate=learning_rate,
+        device=device,
     )
-    
+
     # Testing the model on the test dataset
     print("Testing the model on the test dataset...")
     validate(model, test_loader, nn.CrossEntropyLoss(), device)
 
 
-
 if __name__ == "__main__":
     print("Begin script for convolutional model...")
-    
+
     main()
