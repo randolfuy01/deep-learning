@@ -87,7 +87,7 @@ class ConvNet(nn.Module):
     def __init__(self):
         super().__init__()
         self.convolutional_layers = nn.Sequential(
-            nn.Conv2d(8, 64, kernel_size=3, padding=1),  
+            nn.Conv2d(3, 32, kernel_size=3, padding=1),  
             nn.BatchNorm2d(64),
             nn.ReLU(inplace=True),
             nn.MaxPool2d(2, 2),
