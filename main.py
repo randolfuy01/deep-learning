@@ -17,8 +17,13 @@ import torch.nn as nn
 import torch.optim as optim
 from torchvision import transforms, datasets
 from torch.utils.data import DataLoader, random_split
+import csv
 
-
+maxaccuracy=70.0
+training_losses = []
+validation_losses = []
+learning_rates = []
+accuracies_list=[]
 """
 Predefine transformations for the data includes normalization and resizing.
 """
@@ -82,43 +87,46 @@ class ConvNet(nn.Module):
     def __init__(self):
         super().__init__()
         self.convolutional_layers = nn.Sequential(
-            nn.Conv2d(3, 32, kernel_size=3, padding=1),
-            nn.BatchNorm2d(32),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(2, 2),
-            
-            nn.Conv2d(32, 64, kernel_size=3, padding=1),
+            nn.Conv2d(3, 64, kernel_size=3, padding=1),  
             nn.BatchNorm2d(64),
             nn.ReLU(inplace=True),
             nn.MaxPool2d(2, 2),
-            
+
             nn.Conv2d(64, 128, kernel_size=3, padding=1),
             nn.BatchNorm2d(128),
             nn.ReLU(inplace=True),
             nn.MaxPool2d(2, 2),
-            
+
+            nn.Conv2d(128, 128, kernel_size=3, padding=1),
+            nn.BatchNorm2d(128),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(2, 2),
+
             nn.Conv2d(128, 256, kernel_size=3, padding=1),
             nn.BatchNorm2d(256),
             nn.ReLU(inplace=True),
             nn.MaxPool2d(2, 2),
         )
-
+        
         self.fully_connection_layers = nn.Sequential(
-            nn.Dropout(0.2),
+           
+            nn.Dropout(0.4),   # increased dropout
             nn.Linear(256 * 14 * 14, 512),
+            nn.BatchNorm1d(512),  # Added batch normalization
+            nn.ReLU(inplace=True),
+           
+            nn.Dropout(0.4),  # increased dropout
+            nn.Linear(512, 256), 
+            nn.BatchNorm1d(256),  # added batch normalization
+            nn.ReLU(inplace=True),
+           
+            nn.Dropout(0.4),   # increased dropout
+            nn.Linear(256, 128),
+            nn.BatchNorm1d(128),  # added batch normalization
             nn.ReLU(inplace=True),
             
-            nn.Dropout(0.2),
-            nn.Linear(512, 256),
-            nn.ReLU(inplace=True),
-            
-            nn.Dropout(0.2),
-            nn.Linear(256, 64),
-            nn.ReLU(inplace=True),
-            
-            nn.Linear(64, 11),
+            nn.Linear(128, 11),
         )
-
     def forward(self, x):
         x = self.convolutional_layers(x)
         x = x.view(x.size(0), -1)
@@ -146,6 +154,7 @@ def training_loop(
     """
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.5)
 
     for epoch in range(num_epochs):
         model.train()
@@ -160,12 +169,14 @@ def training_loop(
             loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
+            
 
             running_loss += loss.item()
-
+        scheduler.step()
         avg_train_loss = running_loss / len(trainloader)
-        print(f"Epoch [{epoch+1}/{num_epochs}], Training Loss: {avg_train_loss:.3f}")
-
+        training_losses.append(avg_train_loss)
+        learning_rates.append(scheduler.get_last_lr()[0])
+        print(f"Epoch [{epoch+1}/{num_epochs}], Training Loss: {avg_train_loss:.3f}, Learning Rate: {scheduler.get_last_lr()[0]}")
         validate(model, validloader, criterion, device)
 
 
@@ -194,19 +205,52 @@ def validate(model, dataloader, criterion, device):
             _, predicted = torch.max(outputs.data, 1)
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
+    
     accuracy = 100 * correct / total
     avg_loss = running_loss / len(dataloader)
+    validation_losses.append(avg_loss)
+    accuracies_list.append(accuracy)
+    global maxaccuracy
+    if maxaccuracy < accuracy:
+        maxaccuracy = accuracy
+        print(f"Highest accuracy, saving the model")
+        torch.save(model.state_dict(), f"./model/cnn_model_test.pth")
     print(f"Validation Loss: {avg_loss:.3f}, Accuracy: {accuracy:.2f}%")
     model.train()
+def output_to_csv(filename, epochs):
+    """
+    Save training data to a CSV file.
 
+    Args:
+        filename (str): Name of the output CSV file.
+        epochs (list): List of epoch numbers.
+        training_losses (list): List of training losses per epoch.
+        validation_losses (list): List of validation losses per epoch.
+        accuracies (list): List of accuracies per epoch.
+        learning_rates (list): List of learning rates per epoch.
+    """
+    with open(filename, mode='w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(["Epoch", "Training Loss", "Validation Loss", "Accuracy (%)", "Learning Rate"])
+
+        for epoch in range(1, epochs + 1):
+            train_loss = training_losses[epoch - 1]
+            val_loss = validation_losses[epoch - 1]
+            acc = accuracies_list[epoch - 1]
+            lr = learning_rates[epoch - 1]
+            writer.writerow([epoch, train_loss, val_loss, acc, lr])
+
+    print(f"Training data successfully saved to {filename}")
+  
 
 def main():
-
+    
     device = (
-        torch.device("mps")
-        if torch.backends.mps.is_available()
-        else torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    torch.device("cuda") if torch.cuda.is_available()
+    else torch.device("mps") if torch.backends.mps.is_available()
+    else torch.device("cpu")
     )
+
     print("Device: ", device)
 
     """
@@ -214,15 +258,15 @@ def main():
     Change based on desired results.
     """
     root = "./dataset/Danger Of Extinction"
-    batch_size = 32
-    num_workers = 4
-    num_epochs = 15
-    split_ratio = 0.8
-    learning_rate = 0.001
+    batch_size = 8
+    num_workers = 8
+    num_epochs = 200
+    split_ratio = 0.7
+    learning_rate = 0.005
 
     print("Getting dataloader...")
     train_loader, valid_loader, test_loader = get_dataloader(
-        transform=transform,
+        transform=transform,    
         root=root,
         batch_size=batch_size,
         split_ratio=split_ratio,
@@ -230,7 +274,7 @@ def main():
     )
 
     model = ConvNet().to(device)
-
+    print(f"Model device: {next(model.parameters()).device}")
     print("Starting training loop...")
     training_loop(
         model=model,
@@ -244,9 +288,10 @@ def main():
     # Testing the model on the test dataset
     print("Testing the model on the test dataset...")
     validate(model, test_loader, nn.CrossEntropyLoss(), device)
-
-
+    output_to_csv("./model/cnn_model_test.csv", num_epochs)
+    
 if __name__ == "__main__":
     print("Begin script for convolutional model...")
 
     main()
+            
