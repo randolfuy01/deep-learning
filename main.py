@@ -154,7 +154,7 @@ def training_loop(
     """
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.5)
 
     for epoch in range(num_epochs):
         model.train()
@@ -214,7 +214,7 @@ def validate(model, dataloader, criterion, device):
     if maxaccuracy < accuracy:
         maxaccuracy = accuracy
         print(f"Highest accuracy, saving the model")
-        torch.save(model.state_dict(), f"./model/cnn_model_test._2.pth")
+        torch.save(model.state_dict(), f"./model/cnn_model_test_3.pth")
     print(f"Validation Loss: {avg_loss:.3f}, Accuracy: {accuracy:.2f}%")
     model.train()
 def output_to_csv(filename, epochs):
@@ -258,11 +258,11 @@ def main():
     Change based on desired results.
     """
     root = "./dataset/Danger Of Extinction"
-    batch_size = 8 #increased to 16 from 8
+    batch_size = 16
     num_workers = 8
     num_epochs = 200
-    split_ratio = 0.8
-    learning_rate = 0.005 #decreased to 1 from 5
+    split_ratio = 0.7
+    learning_rate = 0.005
 
     print("Getting dataloader...")
     train_loader, valid_loader, test_loader = get_dataloader(
@@ -274,7 +274,6 @@ def main():
     )
 
     model = ConvNet().to(device)
-    print(f"Model device: {next(model.parameters()).device}")
     print("Starting training loop...")
     training_loop(
         model=model,
@@ -288,7 +287,7 @@ def main():
     # Testing the model on the test dataset
     print("Testing the model on the test dataset...")
     validate(model, test_loader, nn.CrossEntropyLoss(), device)
-    output_to_csv("./model/cnn_model_test_2.csv", num_epochs)
+    output_to_csv("./model/cnn_model_test.csv_3", num_epochs)
     
 if __name__ == "__main__":
     print("Begin script for convolutional model...")
