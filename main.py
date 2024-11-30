@@ -260,11 +260,13 @@ def main():
     root = "./dataset/Danger Of Extinction"
     batch_size = 16
     num_workers = 8
-    num_epochs = 200
+    num_epochs = 400
     split_ratio = 0.7
-    learning_rate = 0.005
+    learning_rate = 0.0001
 
     print("Getting dataloader...")
+    print(f"batch size {batch_size}\nnum_workers {num_workers}\nnum_epochs {num_epochs}\nsplit_ratio {split_ratio}\nlearning_rate {learning_rate}")
+
     train_loader, valid_loader, test_loader = get_dataloader(
         transform=transform,    
         root=root,

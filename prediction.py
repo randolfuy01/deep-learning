@@ -43,7 +43,7 @@ def predict_image(model, image_path, device="cpu"):
 
 if __name__ == "__main__":
     model = ConvNet() 
-    model.load_state_dict(torch.load("./model/cnn_model_test_2.pth"))
+    model.load_state_dict(torch.load("./model/cnn_model_test_3.pth"))
     model.eval()
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
