@@ -49,17 +49,17 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
     
-    for i in range(1,11):
-            image_path = f"test{i}.jpg"
+    for i in range(1,23):
+            image_path = f"./test/test{i}.jpg"
             img = mpimg.imread(image_path)
 
             dataset = datasets.ImageFolder("./dataset/Danger Of Extinction", transform=transform)
             predicted = predict_image(model, image_path, device)
             print(f"test{i}.jpg")
-            print(f"Predicted class: {[predicted]}")
+            
             class_name = dataset.classes[predicted]
+            print(f"Predicted to be: {class_name}")
 
-        
             plt.imshow(img)
             plt.title(f"Predicted to be: {class_name}")
             plt.show()

@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-df = pd.read_csv('./model/cnn_model_test_2.csv') 
+df = pd.read_csv('./model/cnn_model_test_3.csv') 
 
 epochs = df['Epoch']  
 training_losses = df['Training Loss']
