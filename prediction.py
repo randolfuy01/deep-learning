@@ -43,21 +43,23 @@ def predict_image(model, image_path, device="cpu"):
 
 if __name__ == "__main__":
     model = ConvNet() 
-    model.load_state_dict(torch.load("./model/cnn_model_test_1.pth"))
+    model.load_state_dict(torch.load("./model/cnn_model_test_3.pth"))
     model.eval()
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
     
-    image_path = "test2.jpg"
-    img = mpimg.imread(image_path)
+    for i in range(1,23):
+            image_path = f"./test/test{i}.jpg"
+            img = mpimg.imread(image_path)
 
-    dataset = datasets.ImageFolder("./dataset/Danger Of Extinction", transform=transform)
-    predicted = predict_image(model, image_path, device)
-    print(f"Predicted class: {[predicted]}")
-    class_name = dataset.classes[predicted]
+            dataset = datasets.ImageFolder("./dataset/Danger Of Extinction", transform=transform)
+            predicted = predict_image(model, image_path, device)
+            print(f"test{i}.jpg")
+            
+            class_name = dataset.classes[predicted]
+            print(f"Predicted to be: {class_name}")
 
-   
-    plt.imshow(img)
-    plt.title(f"Predicted to be: {class_name}")
-    plt.show()
+            plt.imshow(img)
+            plt.title(f"Predicted to be: {class_name}")
+            plt.show()
